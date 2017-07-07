@@ -41,13 +41,18 @@ namespace AqualiumControlWeb.Models
 
 
             // Create the CloudTable object that represents the "people" table.
-            CloudTable table = tableClient.GetTableReference("AzureWebJobsHostLogs201706");
+            CloudTable table = tableClient.GetTableReference("AzureWebJobsHostLogs201707");
             OperationContext context = new OperationContext();
             // Construct the query operation for all customer entities where PartitionKey="Smith".
             //TableQuery<aqusaliumRawDate> query = new TableQuery<aqusaliumRawDate>().Where(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, "I"));
 
             //ここでテーブルの構造を知らなくてもデータを取ってくることが可能です・・・
-            TableQuery<DynamicTableEntity> query = new TableQuery<DynamicTableEntity>().Where(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, "I"));
+            string queryTimeStart = TableQuery.GenerateFilterConditionForDate("Timestamp", QueryComparisons.GreaterThan, DateTimeOffset.Parse("2017-07-07T00:00:00.000Z"));
+            string queryTimeEnd = TableQuery.GenerateFilterCondition("StartTime", QueryComparisons.GreaterThan, " 2017-07-01T00:00:00.000Z");
+            string queryPatitionKey = TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, "I");
+            string queryWhere=TableQuery.CombineFilters(queryPatitionKey, TableOperators.And, queryTimeStart);
+            //TableQuery<DynamicTableEntity> query = new TableQuery<DynamicTableEntity>().Where(queryPatitionKey);
+            TableQuery <DynamicTableEntity> query = new TableQuery<DynamicTableEntity>().Where(queryWhere);
              // Print the fields for each customer.
             foreach (var entity in table.ExecuteQuery(query))
             {
@@ -68,14 +73,25 @@ namespace AqualiumControlWeb.Models
             {
                 foreach (var property in propertys)
                 {
-                    if (property.Value.PropertyType == EdmType.String)
+                    string tmp = "";
+                    if (property.Value.PropertyType == EdmType.DateTime)
+                    {
+                        if (property.Key == "StartTime")
+                        {
+                            tmp += property.Value.DateTime.ToString();
+                        }
+                    }
+                    else if (property.Value.PropertyType == EdmType.String)
                     {
                         Console.WriteLine("{0}, {1}", property.Key, property.Value.StringValue);
                         if (property.Key == "LogOutput")
                         {
-                            string tmp = property.Value.StringValue;
-                            output.Add(tmp);
+                            tmp +=":"+ property.Value.StringValue;
                         }
+                    }
+                    if (tmp != "")
+                    {
+                        output.Add(tmp);
                     }
                 }
             }

@@ -5,6 +5,9 @@ using System.Web;
 
 namespace AqualiumControlWeb.Models
 {
+    /// <summary>
+    /// 初期設定データを保存します（データはWeb.configを上書きする、settings.configに保存されます）
+    /// </summary>
     public class ContainerSetting
     {
 
