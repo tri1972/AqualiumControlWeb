@@ -25,6 +25,7 @@ namespace AqualiumControlWeb.Views
         protected void Page_Load(object sender, EventArgs e)
         {
 
+            this.GridViewIOTTable.DataBind();
         }
 
         protected void ButtonUpdate_Click(object sender, EventArgs e)

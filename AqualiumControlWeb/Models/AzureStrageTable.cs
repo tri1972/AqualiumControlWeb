@@ -15,43 +15,97 @@ namespace AqualiumControlWeb.Models
 {
     public class AzureStrageTable
     {
+        private static readonly string AZURE_LOG_NAME = "AzureWebJobsHostLogs";
         private static List<IDictionary<string, EntityProperty>> getTableRecord(DateTimeOffset periodStart, DateTimeOffset periodEnd)
         {
-            
+
             List<IDictionary<string, EntityProperty>> output = new List<IDictionary<string, EntityProperty>>();
 
-            
-            
             // Parse the connection string and return a reference to the storage account.
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(
                 CloudConfigurationManager.GetSetting("StorageConnectionString"));
-
             // Create the table client.
             CloudTableClient tableClient = storageAccount.CreateCloudTableClient();
 
+            if (periodEnd.Year-periodStart.Year <2 )
+            {
+            }
+            else
+            {
+                throw new Exception("2年をまたいでログの取得はできません");
+            }
+            for (int j = 0; j < periodEnd.Year - periodStart.Year + 1; j++)
+            {
+                string year = (periodStart.Year+j).ToString();
+                int startMonth, endMonth;
+                if(periodEnd.Year - periodStart.Year < 1)
+                {
+                    startMonth = periodStart.Month;
+                    endMonth = periodEnd.Month;
+                }
+                else
+                {
+                    if (j == 0)
+                    {
+                        startMonth = periodStart.Month;
+                        endMonth = 12;
+                    }
+                    else
+                    {
+                        startMonth = 1;
+                        endMonth = periodEnd.Month;
 
+                    }
+                }
+                for (int i = 0; i < (endMonth - startMonth) + 1; i++)
+                {
+                    string month;
+                    if ((startMonth + i) < 10)
+                    {
+                        month = "0" + (startMonth + i).ToString();
+                    }
+                    else
+                    {
+                        month = (startMonth + i).ToString();
+                    }
+                    // Create the CloudTable object that represents the "people" table.
+                    CloudTable table = tableClient.GetTableReference(AZURE_LOG_NAME + year + month);
+                    // Construct the query operation for all customer entities where PartitionKey="Smith".
+                    //TableQuery<aqusaliumRawDate> query = new TableQuery<aqusaliumRawDate>().Where(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, "I"));
 
-            // Create the CloudTable object that represents the "people" table.
-            CloudTable table = tableClient.GetTableReference("AzureWebJobsHostLogs201707");
-            // Construct the query operation for all customer entities where PartitionKey="Smith".
-            //TableQuery<aqusaliumRawDate> query = new TableQuery<aqusaliumRawDate>().Where(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, "I"));
+                    output.AddRange(getMonthTableRecord(periodStart, periodEnd, table));
 
+                }
+            }
+            return output;
+        }
+        /// <summary>
+        /// AzureIOTのテーブルよりレコードを取得します。ただし月を超えて取得することは不可能です
+        /// </summary>
+        /// <param name="periodStart"></param>
+        /// <param name="periodEnd"></param>
+        /// <param name="output"></param>
+        /// <param name="table"></param>
+        private static List<IDictionary<string, EntityProperty>> getMonthTableRecord(DateTimeOffset periodStart, DateTimeOffset periodEnd, CloudTable table)
+        {
+            var output = new List<IDictionary<string, EntityProperty>>();
             //ここでテーブルの構造を知らなくてもデータを取ってくることが可能です・・・
-            string queryPeriodStart = TableQuery.GenerateFilterConditionForDate("Timestamp", QueryComparisons.GreaterThanOrEqual, periodStart);
-            string queryPeriodEnd = TableQuery.GenerateFilterConditionForDate("Timestamp", QueryComparisons.LessThanOrEqual, periodEnd);
+            var localStart = periodStart.ToOffset(new TimeSpan(9,0,0));
+            var localEnd=periodEnd.ToOffset(new TimeSpan(9, 0, 0));
+            string queryPeriodStart = TableQuery.GenerateFilterConditionForDate("Timestamp", QueryComparisons.GreaterThanOrEqual, localStart);
+            string queryPeriodEnd = TableQuery.GenerateFilterConditionForDate("Timestamp", QueryComparisons.LessThanOrEqual, localEnd);
             string queryPatitionKey = TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, "I");
-            string queryPeriod=TableQuery.CombineFilters(queryPeriodStart, TableOperators.And,queryPeriodEnd);
+            string queryPeriod = TableQuery.CombineFilters(queryPeriodStart, TableOperators.And, queryPeriodEnd);
             string queryWhere = TableQuery.CombineFilters(queryPatitionKey, TableOperators.And, queryPeriod);
             //TableQuery<DynamicTableEntity> query = new TableQuery<DynamicTableEntity>().Where(queryPatitionKey);
-            TableQuery <DynamicTableEntity> query = new TableQuery<DynamicTableEntity>().Where(queryWhere);
-             // Print the fields for each customer.
+            TableQuery<DynamicTableEntity> query = new TableQuery<DynamicTableEntity>().Where(queryWhere);
+            // Print the fields for each customer.
             foreach (var entity in table.ExecuteQuery(query))
             {
-                entity.Properties.Add("Timestamp",new EntityProperty( entity.Timestamp));//めんどくさいのでpropertiesにTimeStampも追加してしまいます
+                entity.Properties.Add("Timestamp", new EntityProperty(entity.Timestamp));//めんどくさいのでpropertiesにTimeStampも追加してしまいます
                 output.Add(entity.Properties);
 
             }
-
             return output;
         }
 
@@ -110,20 +164,12 @@ namespace AqualiumControlWeb.Models
         }
         public static DataSet  DeserializeAqualiumDataSet(DateTimeOffset periodStart, DateTimeOffset periodEnd)
         {
-            DataSet output = new DataSet("default_aquaset");
+            DatasetAqualium output;
 
-            DataTable data_table = new DataTable("default_aquaTable");
-            output.Tables.Add(data_table);
+            output = new DatasetAqualium("aqua");
+            output.Initialize();
 
-
-
-            // データテーブルにカラムを作成・登録
-            data_table.Columns.Add("DeviceId", Type.GetType("System.String"));
-            data_table.Columns.Add("Timestamp", Type.GetType("System.String"));
-            data_table.Columns.Add("Temperature", Type.GetType("System.String"));
-
-            // データテーブルのプライマリーキー（主キー）を設定
-            data_table.PrimaryKey = new DataColumn[] { data_table.Columns["col1"] };
+            //InitDatasetAqualium(out output, out data_table);
 
             var aquadata =
                 from p in DeserializeAqualiumData(periodStart, periodEnd)
@@ -133,14 +179,19 @@ namespace AqualiumControlWeb.Models
             {
                 DataRow data_row;
                 // データ行の作成とテーブルへの登録　その１
-                data_row = data_table.NewRow();
+                data_row = output.TableAqua.NewRow();
                 data_row["DeviceId"] = data.DeviceId;
                 data_row["Timestamp"] = data.Timestamp;
                 data_row["Temperature"] = data.Temperature;
-                data_table.Rows.Add(data_row);
+                data_row["Humidity"] = data.Humidity;
+                data_row["ExternalTemperature"] = data.ExternalTemperature;
+                data_row["Pressure"] = data.Pressure;
+
+                output.TableAqua.Rows.Add(data_row);
             }
             return output;
         }
+
         /// <summary>
         /// 受け取ったIotHubからのレコードを水槽内部データオブジェクトとしてデシリアライズします
         /// </summary>

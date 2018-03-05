@@ -212,6 +212,9 @@
     <Compile Include="Models\AzureStrageTable.cs" />
     <Compile Include="Models\ContainerAqualiumRawData.cs" />
     <Compile Include="Models\ContainerSetting.cs" />
+    <Compile Include="Models\DatasetAqualium.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Views\About.aspx.cs">
       <DependentUpon>About.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>

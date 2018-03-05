@@ -47,7 +47,15 @@ namespace AqualiumControlWeb.Models
             get { return this.externalTemperature; }
             set { this.externalTemperature = value; }
         }
-
+        private double pressure;
+        /// <summary>
+        /// 圧力
+        /// </summary>
+        public double Pressure
+        {
+            get { return this.pressure; }
+            set { this.pressure = value; }
+        }
         private DateTimeOffset timestamp;
         /// <summary>
         /// タイムスタンプ
