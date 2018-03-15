@@ -27,7 +27,7 @@ namespace AqualiumControlWeb.Views
 
             this.GridViewIOTTable.DataBind();
         }
-
+        /*
         protected void ButtonUpdate_Click(object sender, EventArgs e)
         {
             dateLogPeriodStart = DateTimeOffset.Parse(this.txtDate1.Text);
@@ -37,7 +37,7 @@ namespace AqualiumControlWeb.Views
                 this.TextBox1.Text += ";" + log;
             }
         }
-
+        */
         protected void ButtonUpdateGridView_Click(object sender, EventArgs e)
         {
             dateLogPeriodStart = DateTimeOffset.Parse(this.txtDate3.Text);

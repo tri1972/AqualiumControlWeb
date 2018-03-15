@@ -90,8 +90,13 @@ namespace AqualiumControlWeb.Models
         {
             var output = new List<IDictionary<string, EntityProperty>>();
             //ここでテーブルの構造を知らなくてもデータを取ってくることが可能です・・・
-            var localStart = periodStart.ToOffset(new TimeSpan(9,0,0));
-            var localEnd=periodEnd.ToOffset(new TimeSpan(9, 0, 0));
+
+            //var localStart = new DateTimeOffset(periodStart.LocalDateTime.AddHours(9.0));
+            //var localEnd = new DateTimeOffset(periodEnd.LocalDateTime.AddHours(9.0));
+            //IOTのレコード時間はUTCらしいのでそのまま検索します
+            var localStart = periodStart;
+            var localEnd= periodEnd;
+
             string queryPeriodStart = TableQuery.GenerateFilterConditionForDate("Timestamp", QueryComparisons.GreaterThanOrEqual, localStart);
             string queryPeriodEnd = TableQuery.GenerateFilterConditionForDate("Timestamp", QueryComparisons.LessThanOrEqual, localEnd);
             string queryPatitionKey = TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, "I");
@@ -101,8 +106,9 @@ namespace AqualiumControlWeb.Models
             TableQuery<DynamicTableEntity> query = new TableQuery<DynamicTableEntity>().Where(queryWhere);
             // Print the fields for each customer.
             foreach (var entity in table.ExecuteQuery(query))
-            {
-                entity.Properties.Add("Timestamp", new EntityProperty(entity.Timestamp));//めんどくさいのでpropertiesにTimeStampも追加してしまいます
+            {//めんどくさいのでpropertiesにTimeStampも追加してしまいます
+                //また、レコードの時間についてはローカルタイムに変換します
+                entity.Properties.Add("Timestamp", new EntityProperty(new DateTimeOffset(entity.Timestamp.LocalDateTime.AddHours(9.0))));
                 output.Add(entity.Properties);
 
             }
