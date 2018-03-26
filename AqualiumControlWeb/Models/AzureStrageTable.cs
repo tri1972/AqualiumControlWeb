@@ -107,8 +107,9 @@ namespace AqualiumControlWeb.Models
             // Print the fields for each customer.
             foreach (var entity in table.ExecuteQuery(query))
             {//めんどくさいのでpropertiesにTimeStampも追加してしまいます
+                entity.Properties.Add("Timestamp", new EntityProperty(entity.Timestamp));
                 //また、レコードの時間についてはローカルタイムに変換します
-                entity.Properties.Add("Timestamp", new EntityProperty(new DateTimeOffset(entity.Timestamp.LocalDateTime.AddHours(9.0))));
+                //entity.Properties.Add("Timestamp", new EntityProperty(new DateTimeOffset(entity.Timestamp.LocalDateTime.AddHours(9.0))));
                 output.Add(entity.Properties);
 
             }
