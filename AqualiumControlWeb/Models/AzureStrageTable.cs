@@ -102,8 +102,10 @@ namespace AqualiumControlWeb.Models
             string queryPatitionKey = TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, "I");
             string queryPeriod = TableQuery.CombineFilters(queryPeriodStart, TableOperators.And, queryPeriodEnd);
             string queryWhere = TableQuery.CombineFilters(queryPatitionKey, TableOperators.And, queryPeriod);
+
             //TableQuery<DynamicTableEntity> query = new TableQuery<DynamicTableEntity>().Where(queryPatitionKey);
             TableQuery<DynamicTableEntity> query = new TableQuery<DynamicTableEntity>().Where(queryWhere);
+            
             // Print the fields for each customer.
             foreach (var entity in table.ExecuteQuery(query))
             {//めんどくさいのでpropertiesにTimeStampも追加してしまいます
