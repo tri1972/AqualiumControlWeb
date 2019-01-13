@@ -8,6 +8,8 @@ using AqualiumControlWeb.Models;
 
 namespace AqualiumControlWeb.Views
 {
+
+
     public  enum IntervalPeriod
     {
         minutes,
@@ -18,6 +20,15 @@ namespace AqualiumControlWeb.Views
 
     public partial class GraphDate : System.Web.UI.Page
     {
+        //各計測温度の閾値
+        private const double lowLimitTemperature = -40.0;
+        private const double highLimitTemperature = 60.0;
+        private const double lowLimitHumidity = 0.0;
+        private const double highLimitHumidity = 100.0;
+        private const double lowLimitPressure = 900.0;
+        private const double highLimitPressure = 1100.0;
+
+
         private DateTime dateTimeNow;
         private DateTimeOffset dateLogPeriodStart;
         private DateTimeOffset dateLogPeriodEnd;
@@ -93,11 +104,22 @@ namespace AqualiumControlWeb.Views
                 if ((totalMinutes % intervalMinutes) == 0)
                 {
                     var tmp = tmpDateTime.Day.ToString() + secondUnit + tmpDateTime.Hour.ToString() + ":" + tmpDateTime.Minute.ToString();
-                    graphData.Add(tmp);
-                    graphTemperature.Add(double.Parse((string)dataTableAqua.Rows[i]["Temperature"]));
-                    graphHumidity.Add(double.Parse((string)dataTableAqua.Rows[i]["Humidity"]));
-                    graphPressure.Add(double.Parse((string)dataTableAqua.Rows[i]["Pressure"]));
-                    graphExTemperature.Add(double.Parse((string)dataTableAqua.Rows[i]["ExternalTemperature"]));
+                    double tmpTemperature = double.Parse((string)dataTableAqua.Rows[i]["Temperature"]);
+                    double tmpHumidity = double.Parse((string)dataTableAqua.Rows[i]["Humidity"]);
+                    double tmpPressure = double.Parse((string)dataTableAqua.Rows[i]["Pressure"]);
+                    double tmpExtTemperature = double.Parse((string)dataTableAqua.Rows[i]["ExternalTemperature"]);
+
+                    if (lowLimitTemperature<= tmpTemperature && tmpTemperature<= highLimitTemperature
+                        && lowLimitHumidity <= tmpHumidity && tmpHumidity <= highLimitHumidity
+                        && lowLimitPressure <= tmpPressure && tmpPressure <= highLimitPressure
+                        && lowLimitTemperature <= tmpExtTemperature && tmpExtTemperature <= highLimitTemperature)
+                    {
+                        graphData.Add(tmp);
+                        graphTemperature.Add(tmpTemperature);
+                        graphHumidity.Add(tmpHumidity);
+                        graphPressure.Add(tmpPressure);
+                        graphExTemperature.Add(tmpExtTemperature);
+                    }
                 }
             }
         }
