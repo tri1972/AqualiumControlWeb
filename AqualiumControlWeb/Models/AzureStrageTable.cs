@@ -79,6 +79,41 @@ namespace AqualiumControlWeb.Models
             }
             return output;
         }
+
+        /// <summary>
+        /// 現時点に一番近いレコードを取得します
+        /// </summary>
+        /// <returns></returns>
+        private static Dictionary<string, EntityProperty> getTableRecordCurrent()
+        {
+            var periodStart = DateTime.Now;
+
+            var output = new Dictionary<string, EntityProperty>();
+
+            // Parse the connection string and return a reference to the storage account.
+            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(
+                CloudConfigurationManager.GetSetting("StorageConnectionString"));
+            // Create the table client.
+            CloudTableClient tableClient = storageAccount.CreateCloudTableClient();
+
+            string year = (periodStart.Year).ToString();
+            int startMonth = periodStart.Month;
+            string month;
+            if ((startMonth) < 10)
+            {
+                month = "0" + (startMonth).ToString();
+            }
+            else
+            {
+                month = (startMonth).ToString();
+            }
+            // Create the CloudTable object that represents the "people" table.
+            CloudTable table = tableClient.GetTableReference(AZURE_LOG_NAME + year + month);
+            // Construct the query operation for all customer entities where PartitionKey="Smith".
+            //TableQuery<aqusaliumRawDate> query = new TableQuery<aqusaliumRawDate>().Where(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, "I"));
+
+            return getTableCurrentRecord(periodStart, table);
+        }
         /// <summary>
         /// AzureIOTのテーブルよりレコードを取得します。ただし月を超えて取得することは不可能です
         /// </summary>
@@ -114,6 +149,44 @@ namespace AqualiumControlWeb.Models
                 //entity.Properties.Add("Timestamp", new EntityProperty(new DateTimeOffset(entity.Timestamp.LocalDateTime.AddHours(9.0))));
                 output.Add(entity.Properties);
 
+            }
+            return output;
+        }
+        /// <summary>
+        /// 指定した時刻に一番近いデータを取得します
+        /// </summary>
+        /// <param name="periodNow">時刻</param>
+        /// <param name="table">取得したいテーブル</param>
+        /// <returns></returns>
+        private static Dictionary<string, EntityProperty> getTableCurrentRecord(DateTimeOffset periodNow, CloudTable table)
+        {
+            var output = new Dictionary<string, EntityProperty>();
+            //ここでテーブルの構造を知らなくてもデータを取ってくることが可能です・・・
+
+            //var localStart = new DateTimeOffset(periodStart.LocalDateTime.AddHours(9.0));
+            //IOTのレコード時間はUTCらしいのでそのまま検索します
+            var localStart = periodNow;
+
+            string queryPeriodStart = TableQuery.GenerateFilterConditionForDate("Timestamp", QueryComparisons.LessThanOrEqual, localStart);
+            string queryPatitionKey = TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, "I");
+            string queryWhere = TableQuery.CombineFilters(queryPatitionKey, TableOperators.And, queryPeriodStart);
+
+            //TableQuery<DynamicTableEntity> query = new TableQuery<DynamicTableEntity>().Where(queryPatitionKey);
+            TableQuery<DynamicTableEntity> query = new TableQuery<DynamicTableEntity>().Where(queryWhere);
+
+            var maxTime = new DateTimeOffset();
+            // Print the fields for each customer.
+            foreach (var entity in table.ExecuteQuery(query))
+            {
+                if (maxTime <= entity.Timestamp)
+                {
+                    //めんどくさいのでpropertiesにTimeStampも追加してしまいます
+                    entity.Properties.Add("Timestamp", new EntityProperty(entity.Timestamp));
+                    //また、レコードの時間についてはローカルタイムに変換します
+                    //entity.Properties.Add("Timestamp", new EntityProperty(new DateTimeOffset(entity.Timestamp.LocalDateTime.AddHours(9.0))));
+                    output = entity.Properties as Dictionary<string, EntityProperty>;
+                    maxTime = entity.Timestamp;
+                }
             }
             return output;
         }
@@ -158,7 +231,7 @@ namespace AqualiumControlWeb.Models
         /// <param name="periodStart"></param>
         /// <param name="periodEnd"></param>
         /// <returns></returns>
-        public static List<ContainerAqualiumRawData> DeserializeAqualiumData(DateTimeOffset periodStart, DateTimeOffset periodEnd)
+        public static List<ContainerAqualiumRawData> DeserializeAqualiumDatas(DateTimeOffset periodStart, DateTimeOffset periodEnd)
         {
             List<ContainerAqualiumRawData> aquadatas = new List<ContainerAqualiumRawData>();
             List<Exception> except = new List<Exception>();
@@ -171,6 +244,21 @@ namespace AqualiumControlWeb.Models
             }
             return aquadatas;
         }
+
+        /// <summary>
+        ///　現在の環境データを取得します 
+        /// </summary>
+        /// <returns></returns>
+        public static ContainerAqualiumRawData DeserializeAqualiumDataCurrent()
+        {
+
+            var aquadatas = new ContainerAqualiumRawData();
+
+            var tableRecords = AzureStrageTable.getTableRecordCurrent();
+
+            return deserializeRecesiveRecord(tableRecords);
+        }
+
         public static DataSet  DeserializeAqualiumDataSet(DateTimeOffset periodStart, DateTimeOffset periodEnd)
         {
             DatasetAqualium output;
@@ -181,7 +269,7 @@ namespace AqualiumControlWeb.Models
             //InitDatasetAqualium(out output, out data_table);
 
             var aquadata =
-                from p in DeserializeAqualiumData(periodStart, periodEnd)
+                from p in DeserializeAqualiumDatas(periodStart, periodEnd)
                 orderby p.Timestamp
                 select p;
             foreach (var data in aquadata)

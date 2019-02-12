@@ -54,6 +54,8 @@ namespace AqualiumControlWeb.Views
                     this.graphExTemperature = new List<double>();
 
                     Label1.Text = "今日の環境データ(" + dateTimeNow.ToString() + " 現在)";
+                    var currentAqualiumData=AzureStrageTable.DeserializeAqualiumDataCurrent();
+
                     this.dateLogPeriodStart = DateTimeOffset.Parse(dateTimeNow.Date.ToString());
                     this.dateLogPeriodEnd = DateTimeOffset.Parse(dateTimeNow.ToString());
                     this.getIoTData(IntervalPeriod.minutes);
