@@ -176,8 +176,18 @@ namespace AqualiumControlWeb.Models
 
             var maxTime = new DateTimeOffset();
             // Print the fields for each customer.
-            foreach (var entity in table.ExecuteQuery(query))
+            foreach (var entity in table.ExecuteQuery(query).OrderByDescending(a=>a.Timestamp))
             {
+                /*
+                //めんどくさいのでpropertiesにTimeStampも追加してしまいます
+                entity.Properties.Add("Timestamp", new EntityProperty(entity.Timestamp));
+                //また、レコードの時間についてはローカルタイムに変換します
+                //entity.Properties.Add("Timestamp", new EntityProperty(new DateTimeOffset(entity.Timestamp.LocalDateTime.AddHours(9.0))));
+                output = entity.Properties as Dictionary<string, EntityProperty>;
+                maxTime = entity.Timestamp;
+                break;
+                */
+                
                 if (maxTime <= entity.Timestamp)
                 {
                     //めんどくさいのでpropertiesにTimeStampも追加してしまいます
@@ -187,6 +197,7 @@ namespace AqualiumControlWeb.Models
                     output = entity.Properties as Dictionary<string, EntityProperty>;
                     maxTime = entity.Timestamp;
                 }
+                
             }
             return output;
         }
